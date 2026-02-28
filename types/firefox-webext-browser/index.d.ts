@@ -238,6 +238,8 @@ declare namespace browser._manifest {
         run_at?: extensionTypes.RunAt | undefined;
         /** The JavaScript world for a script to execute within. Defaults to "ISOLATED". */
         world?: extensionTypes.ExecutionWorld | undefined;
+        /** The css origin of the stylesheet to inject. Defaults to "author". */
+        css_origin?: extensionTypes.CSSOrigin | undefined;
     }
 
     type IconPath = {
@@ -1619,6 +1621,8 @@ declare namespace browser.contentScripts {
         runAt?: extensionTypes.RunAt | undefined;
         /** The JavaScript world for a script to execute within. Defaults to "ISOLATED". */
         world?: extensionTypes.ExecutionWorld | undefined;
+        /** The css origin of the stylesheet to inject. Defaults to "author". */
+        cssOrigin?: extensionTypes.CSSOrigin | undefined;
         /** limit the set of matched tabs to those that belong to the given cookie store id */
         cookieStoreId?: string[] | string | undefined;
     }
@@ -3215,7 +3219,8 @@ declare namespace browser.geckoProfiler {
         | "memory"
         | "tracing"
         | "sandbox"
-        | "flows";
+        | "flows"
+        | "jssources";
 
     type Supports = "windowLength";
 
@@ -3486,11 +3491,16 @@ declare namespace browser.management {
     type ExtensionType = "extension" | "theme";
 
     /**
-     * How the extension was installed. One of
-     * `development`: The extension was loaded unpacked in developer mode,
-     * `normal`: The extension was installed normally via an .xpi file,
-     * `sideload`: The extension was installed by other software on the machine,
-     * `admin`: The extension was installed by policy,
+     * How the extension was installed.
+     *
+     * `development`: The extension was loaded unpacked in developer mode.
+     *
+     * `normal`: The extension was installed normally via an .xpi file.
+     *
+     * `sideload`: The extension was installed by other software on the machine.
+     *
+     * `admin`: The extension was installed by policy.
+     *
      * `other`: The extension was installed by other means.
      */
     type ExtensionInstallType =
@@ -4366,6 +4376,7 @@ declare namespace browser.runtime {
         | "aarch64"
         | "arm"
         | "ppc64"
+        | "riscv64"
         | "s390x"
         | "sparc64"
         | "x86-32"
@@ -4566,18 +4577,18 @@ declare namespace browser.runtime {
 
     /**
      * Attempts to connect to connect listeners within an extension/app (such as the background page), or other extensions/apps. This is useful for content scripts connecting to their extension processes, inter-app/extension communication, and web messaging. Note that this does not connect to any listeners in a content script. Extensions may connect to content scripts embedded in tabs via `tabs.connect`.
-     * @returns Port through which messages can be sent and received. The port's `runtime.Port onDisconnect` event is fired if the extension/app does not exist.
+     * @returns Port through which messages can be sent and received. The port's `runtime.Port.onDisconnect` event is fired if the extension/app does not exist.
      */
     function connect(): Port;
     /**
      * Attempts to connect to connect listeners within an extension/app (such as the background page), or other extensions/apps. This is useful for content scripts connecting to their extension processes, inter-app/extension communication, and web messaging. Note that this does not connect to any listeners in a content script. Extensions may connect to content scripts embedded in tabs via `tabs.connect`.
      * @param extensionId The ID of the extension or app to connect to. If omitted, a connection will be attempted with your own extension. Required if sending messages from a web page for web messaging.
-     * @returns Port through which messages can be sent and received. The port's `runtime.Port onDisconnect` event is fired if the extension/app does not exist.
+     * @returns Port through which messages can be sent and received. The port's `runtime.Port.onDisconnect` event is fired if the extension/app does not exist.
      */
     function connect(extensionId: string, connectInfo?: _ConnectConnectInfo): Port;
     /**
      * Attempts to connect to connect listeners within an extension/app (such as the background page), or other extensions/apps. This is useful for content scripts connecting to their extension processes, inter-app/extension communication, and web messaging. Note that this does not connect to any listeners in a content script. Extensions may connect to content scripts embedded in tabs via `tabs.connect`.
-     * @returns Port through which messages can be sent and received. The port's `runtime.Port onDisconnect` event is fired if the extension/app does not exist.
+     * @returns Port through which messages can be sent and received. The port's `runtime.Port.onDisconnect` event is fired if the extension/app does not exist.
      */
     function connect(connectInfo: _ConnectConnectInfo): Port;
 
@@ -4823,6 +4834,8 @@ declare namespace browser.scripting {
          * The list of CSS files to be injected into matching pages. These are injected in the order they appear in this array.
          */
         css?: _manifest.ExtensionURL[] | undefined;
+        /** The css origin for the injection. */
+        cssOrigin?: extensionTypes.CSSOrigin | undefined;
     }
 
     /** The style origin for the injection. Defaults to `'AUTHOR'`. */
@@ -4901,41 +4914,6 @@ declare namespace browser.storage {
         /**
          * Gets the amount of space (in bytes) being used by one or more items.
          * @param [keys] A single key or list of keys to get the total usage for. An empty list will return 0. Pass in `null` to get the total usage of all of storage.
-         * @deprecated Unsupported on Firefox at this time.
-         */
-        getBytesInUse?(keys?: null | string | string[]): Promise<number>;
-        /** Gets the keys of all items in storage. */
-        getKeys(): Promise<string[]>;
-        /**
-         * Sets multiple items.
-         * @param items An object which gives each key/value pair to update storage with. Any other key/value pairs in storage will not be affected.
-         *
-         * Primitive values such as numbers will serialize as expected. Values with a `typeof` `"object"` and `"function"` will typically serialize to `{}`, with the exception of `Array` (serializes as expected), `Date`, and `Regex` (serialize using their `String` representation).
-         */
-        set(items: { [key: string]: any }): Promise<void>;
-        /**
-         * Removes one or more items from storage.
-         * @param keys A single key or a list of keys for items to remove.
-         */
-        remove(keys: string | string[]): Promise<void>;
-        /** Removes all items from storage. */
-        clear(): Promise<void>;
-        /**
-         * Fired when one or more items change.
-         * @param changes Object mapping each key that changed to its corresponding `storage.StorageChange` for that item.
-         */
-        onChanged: WebExtEvent<(changes: { [key: string]: StorageChange }) => void>;
-    }
-
-    interface StorageAreaWithUsage {
-        /**
-         * Gets one or more items from storage.
-         * @param [keys] A single key to get, list of keys to get, or a dictionary specifying default values (see description of the object). An empty list or object will return an empty result object. Pass in `null` to get the entire contents of storage.
-         */
-        get(keys?: null | string | string[] | { [key: string]: any }): Promise<{ [key: string]: any }>;
-        /**
-         * Gets the amount of space (in bytes) being used by one or more items.
-         * @param [keys] A single key or list of keys to get the total usage for. An empty list will return 0. Pass in `null` to get the total usage of all of storage.
          */
         getBytesInUse(keys?: null | string | string[]): Promise<number>;
         /** Gets the keys of all items in storage. */
@@ -4961,7 +4939,7 @@ declare namespace browser.storage {
         onChanged: WebExtEvent<(changes: { [key: string]: StorageChange }) => void>;
     }
 
-    interface _SyncStorageAreaWithUsage extends StorageAreaWithUsage {
+    interface _SyncStorageArea extends StorageArea {
         /**
          * The maximum total amount (in bytes) of data that can be stored in sync storage, as measured by the JSON stringification of every value plus every key's length. Updates that would cause this limit to be exceeded fail immediately and set `runtime.lastError`.
          */
@@ -5006,7 +4984,7 @@ declare namespace browser.storage {
         QUOTA_BYTES: number;
     }
 
-    interface _SessionStorageAreaWithUsage extends StorageAreaWithUsage {
+    interface _SessionStorageArea extends StorageArea {
         /**
          * The maximum amount of data (in bytes, currently at 10MB) that can be stored in session storage, as measured by the StructuredCloneHolder of every value plus every key's length.
          */
@@ -5015,7 +4993,7 @@ declare namespace browser.storage {
 
     /* storage properties */
     /** Items in the `sync` storage area are synced by the browser. */
-    const sync: _SyncStorageAreaWithUsage;
+    const sync: _SyncStorageArea;
 
     /** Items in the `local` storage area are local to each machine. */
     const local: _LocalStorageArea;
@@ -5030,13 +5008,13 @@ declare namespace browser.storage {
      *
      * Not allowed in: Content scripts
      */
-    const session: _SessionStorageAreaWithUsage;
+    const session: _SessionStorageArea;
 
     /* storage events */
     /**
      * Fired when one or more items change.
      * @param changes Object mapping each key that changed to its corresponding `storage.StorageChange` for that item.
-     * @param areaName The name of the storage area (`"sync"`, `"local"` or `"managed"`) the changes are for.
+     * @param areaName The name of the storage area (`"session"`, `"sync"`, `"local"` or `"managed"`) the changes are for.
      */
     const onChanged: WebExtEvent<(changes: { [key: string]: StorageChange }, areaName: string) => void>;
 }
@@ -9208,6 +9186,8 @@ declare namespace browser.tabs {
          * The tab's new favicon URL. This property is only present if the extension's manifest includes the `"tabs"` permission.
          */
         favIconUrl?: string | undefined;
+        /** The tab's new group ID. `tabGroups.TAB_GROUP_ID_NONE` (-1) if the tab no longer belongs to a tab group. */
+        groupId?: number | undefined;
         /** The tab's new hidden state. */
         hidden?: boolean | undefined;
         /** Whether the document in the tab can be rendered in reader mode. */
