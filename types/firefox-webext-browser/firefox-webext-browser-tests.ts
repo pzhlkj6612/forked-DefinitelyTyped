@@ -410,3 +410,51 @@ browser.browserSettings.verticalTabs.get({ incognito: true });
 
 browser.alarms.create({ when: 42, delayInMinutes: 4 });
 browser.alarms.create("alarmName", { periodInMinutes: 2 });
+
+// Test new v148 features
+
+// ContentScript css_origin
+{
+    const manifest = browser.runtime.getManifest();
+    manifest.content_scripts?.every(item => {
+        item.css_origin; // $ExpectType CSSOrigin | undefined
+    });
+}
+
+// geckoProfiler "jssources" feature
+browser.geckoProfiler.start({
+    bufferSize: 0,
+    interval: 0,
+    features: ["jssources"],
+});
+
+// PlatformArch "riscv64"
+browser.runtime.getPlatformInfo().then(info => {
+    const arch: browser.runtime.PlatformArch = "riscv64";
+});
+
+// contentScripts cssOrigin
+browser.contentScripts.register({ matches: ["<all_urls>"], cssOrigin: "author" });
+browser.contentScripts.register({ matches: ["<all_urls>"], cssOrigin: "user" });
+
+// scripting RegisteredContentScript cssOrigin
+browser.scripting.registerContentScripts([{ id: "scriptId", cssOrigin: "author" }]);
+browser.scripting.registerContentScripts([{ id: "scriptId", cssOrigin: "user" }]);
+
+// tabs onUpdated groupId in changeInfo
+browser.tabs.onUpdated.addListener(
+    (tabId, changeInfo, tab) => {
+        changeInfo.groupId; // $ExpectType number | undefined
+    },
+);
+
+// storage.sync.getBytesInUse is now required (not optional)
+browser.storage.sync.getBytesInUse().then(bytes => {
+    bytes; // $ExpectType number
+});
+browser.storage.local.getBytesInUse().then(bytes => {
+    bytes; // $ExpectType number
+});
+browser.storage.session.getBytesInUse().then(bytes => {
+    bytes; // $ExpectType number
+});
